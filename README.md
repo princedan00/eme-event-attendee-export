@@ -1,4 +1,4 @@
-# EME Event Attendee Export — one-off plugin for a WordPress site running Events Made Easy
+# EME Event Attendee Export — WordPress Plugin (v1.1.0)
 
 **What it is:** a small standalone WordPress plugin that exports, for each
 Event Made Easy event, which people booked it — one real `.xlsx` workbook

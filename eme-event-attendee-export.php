@@ -3,7 +3,7 @@
  * Plugin Name: EME Event Attendee Export
  * Plugin URI: https://www.onlinemarketing.design
  * Description: One-off export for Event Made Easy: one Excel workbook per event, named after the event, listing the people who booked it — all zipped into a single download.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Requires at least: 6.0
  * Requires PHP: 8.2
  * Author: Online Marketing Design
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EMEA_EXPORT_VERSION', '1.0.0' );
+define( 'EMEA_EXPORT_VERSION', '1.1.0' );
 define( 'EMEA_EXPORT_FILE', __FILE__ );
 define( 'EMEA_EXPORT_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EMEA_EXPORT_URL', plugin_dir_url( __FILE__ ) );

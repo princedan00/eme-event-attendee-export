@@ -4,7 +4,7 @@ Tags: events, export, excel, attendees, events made easy
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,11 @@ One column per custom field from the booking form that has an answer on at least
 The second workbook gets `-{event ID}` appended, so no file in the ZIP overwrites another.
 
 == Changelog ==
+
+= 1.1.0 =
+* Added individual event XLSX export action in the events table.
+* Redesigned date filter toolbar with a slim, modern inline UI.
+* Fixed filename and XML character sanitization for event names with colons, trailing dots, or special/box characters.
 
 = 1.0.0 =
 * First release. One-off export: one .xlsx per event, zipped.

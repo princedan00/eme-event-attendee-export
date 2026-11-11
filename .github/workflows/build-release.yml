@@ -1,0 +1,33 @@
+name: Build WordPress Plugin ZIP
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create WordPress Plugin Archive
+        run: |
+          mkdir -p build/eme-event-attendee-export
+          cp -r admin assets includes eme-event-attendee-export.php readme.txt uninstall.php LICENSE build/eme-event-attendee-export/
+          cd build
+          zip -r ../eme-event-attendee-export.zip eme-event-attendee-export/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eme-event-attendee-export
+          path: eme-event-attendee-export.zip
+
+      - name: Release Asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: eme-event-attendee-export.zip
