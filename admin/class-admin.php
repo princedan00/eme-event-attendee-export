@@ -98,13 +98,27 @@ class EMEA_Export_Admin {
 	}
 
 	/**
-	 * Handle the download POST: nonce + capability, then stream the ZIP.
+	 * Handle downloads: bulk ZIP via POST or individual XLSX via GET.
 	 *
 	 * Runs on admin_init so the download headers go out before any
 	 * admin output. On failure it redirects back to the page with a
 	 * notice code instead of streaming.
 	 */
 	public static function handle_download() {
+		// Single event export via GET action.
+		if ( isset( $_GET['action'], $_GET['event_id'] ) && 'emea_export_single' === sanitize_key( wp_unslash( $_GET['action'] ) ) ) {
+			if ( ! current_user_can( self::CAPABILITY ) ) {
+				wp_die( esc_html__( 'You do not have permission to export attendees.', 'eme-event-attendee-export' ) );
+			}
+			$event_id = intval( $_GET['event_id'] );
+			check_admin_referer( 'emea_export_single_' . $event_id );
+
+			$error = EMEA_Exporter::stream_xlsx( $event_id );
+			if ( is_wp_error( $error ) ) {
+				self::redirect_with_notice( 'failed', $error->get_error_code() );
+			}
+		}
+
 		if ( ! isset( $_POST['emea_export_download'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			return;
 		}

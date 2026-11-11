@@ -252,11 +252,23 @@ class EMEA_Exporter {
 	 * @return string Filename ending in .xlsx.
 	 */
 	public static function xlsx_filename( $name, $event_id, &$used ) {
-		$base = sanitize_file_name( (string) $name );
+		$name = (string) $name;
+		// Decode any HTML entities (e.g. &amp;, &quot;, &#8211;, etc.).
+		$name = html_entity_decode( $name, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		// Strip control characters, zero-width spaces, and private-use characters.
+		$name = preg_replace( '/[\x00-\x1F\x7F\x{200B}-\x{200D}\x{FEFF}\x{FFFD}\x{E000}-\x{F8FF}]/u', '', $name );
+		// Replace characters that are illegal or problematic in filenames on Windows/macOS/Linux.
+		$name = str_replace( array( ':', '/', '\\', '*', '?', '"', '<', '>', '|', '~', '`' ), '-', $name );
+		$base = sanitize_file_name( $name );
+		// Strip leading/trailing punctuation and whitespace.
+		$base = trim( $base, ".-_ \t\n\r\0\x0B" );
+		// Collapse multiple dashes.
+		$base = preg_replace( '/-+/', '-', $base );
 		// sanitize_file_name() keeps dots, so a name ending in ".xlsx"
 		// would otherwise produce a doubled extension.
 		if ( '.xlsx' === strtolower( substr( $base, -5 ) ) ) {
 			$base = substr( $base, 0, -5 );
+			$base = trim( $base, ".-_ \t\n\r\0\x0B" );
 		}
 		if ( '' === $base ) {
 			$base = 'event-' . intval( $event_id );
@@ -270,6 +282,10 @@ class EMEA_Exporter {
 			}
 		} elseif ( strlen( $base ) > 120 ) {
 			$base = substr( $base, 0, 120 );
+		}
+		$base = trim( $base, ".-_ \t\n\r\0\x0B" );
+		if ( '' === $base ) {
+			$base = 'event-' . intval( $event_id );
 		}
 		$candidate = $base . '.xlsx';
 		if ( isset( $used[ $candidate ] ) ) {
@@ -366,13 +382,17 @@ class EMEA_Exporter {
 	 * @return string
 	 */
 	public static function render_answer( $answer, $field_id ) {
-		if ( function_exists( 'eme_answer2readable' ) && function_exists( 'eme_get_formfield' ) ) {
-			$formfield = eme_get_formfield( intval( $field_id ) );
-			if ( ! empty( $formfield ) ) {
-				return (string) eme_answer2readable( (string) $answer, $formfield, 1, '||', 'text', 1 );
+		try {
+			if ( function_exists( 'eme_answer2readable' ) && function_exists( 'eme_get_formfield' ) ) {
+				$formfield = eme_get_formfield( intval( $field_id ) );
+				if ( ! empty( $formfield ) ) {
+					return (string) eme_answer2readable( (string) $answer, $formfield, 1, '||', 'text', 1 );
+				}
 			}
+		} catch ( Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			// Fallback to raw string if EME formatting throws.
 		}
-		return (string) $answer;
+		return is_scalar( $answer ) ? (string) $answer : '';
 	}
 
 	/**
@@ -578,15 +598,23 @@ class EMEA_Exporter {
 	}
 
 	/**
-	 * Escape a cell value for XML, stripping control characters that are
-	 * illegal in XML 1.0.
+	 * Escape a cell value for XML, stripping control characters and invalid
+	 * code points that are illegal in XML 1.0.
 	 *
 	 * @param string $value Raw cell value.
 	 * @return string
 	 */
 	private static function xlsx_escape( $value ) {
-		$value = preg_replace( '/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value );
-		return htmlspecialchars( $value, ENT_XML1 | ENT_COMPAT, 'UTF-8' );
+		$value = (string) $value;
+		if ( function_exists( 'mb_convert_encoding' ) ) {
+			$value = mb_convert_encoding( $value, 'UTF-8', 'UTF-8' );
+		}
+		$value = preg_replace( '/[^\x{0009}\x{000a}\x{000d}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $value );
+		$flags = ENT_XML1 | ENT_COMPAT;
+		if ( defined( 'ENT_SUBSTITUTE' ) ) {
+			$flags |= ENT_SUBSTITUTE;
+		}
+		return htmlspecialchars( $value, $flags, 'UTF-8' );
 	}
 
 	/**
@@ -780,6 +808,48 @@ class EMEA_Exporter {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
 		readfile( $result['path'] );
 		wp_delete_file( $result['path'] );
+		exit;
+	}
+
+	/**
+	 * Stream one event's XLSX workbook directly to the browser and exit.
+	 *
+	 * Sends download headers, streams the file, deletes the temporary XLSX.
+	 * Returns a WP_Error instead of exiting when the XLSX cannot be built.
+	 *
+	 * @param int $event_id Event ID.
+	 * @return WP_Error|null WP_Error on failure, never returns on success.
+	 */
+	public static function stream_xlsx( $event_id ) {
+		global $wpdb;
+		$event_id = intval( $event_id );
+		if ( $event_id <= 0 ) {
+			return new WP_Error( 'invalid_event', __( 'Invalid event ID.', 'eme-event-attendee-export' ) );
+		}
+
+		$prefix       = self::eme_prefix();
+		$events_table = esc_sql( $prefix . 'eme_events' );
+		$event_name   = $wpdb->get_var( $wpdb->prepare( "SELECT event_name FROM `{$events_table}` WHERE event_id = %d", $event_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		$used     = array();
+		$filename = self::xlsx_filename( (string) $event_name, $event_id, $used );
+
+		$xlsx_path = self::build_xlsx_for_event( $event_id );
+		if ( is_wp_error( $xlsx_path ) ) {
+			return $xlsx_path;
+		}
+
+		$size = filesize( $xlsx_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_filesize
+		header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . intval( $size ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'X-Frame-Options: DENY' );
+		header( 'Cache-Control: no-store, no-cache, must-revalidate' );
+		header( 'Pragma: no-cache' );
+		ignore_user_abort( true );
+		readfile( $xlsx_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
+		wp_delete_file( $xlsx_path );
 		exit;
 	}
 }

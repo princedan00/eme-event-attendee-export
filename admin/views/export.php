@@ -51,42 +51,35 @@ $emea_reasons       = array(
 	<?php endif; ?>
 
 	<?php if ( 'failed' === $emea_state ) : ?>
-		<div class="notice notice-error emea-notice"><p><?php esc_html_e( 'The export could not be created. Try again.', 'eme-event-attendee-export' ); ?></p></div>
+		<div class="notice notice-error emea-notice"><p><?php echo esc_html( 'invalid_event' === $emea_reason ? __( 'The requested event could not be found.', 'eme-event-attendee-export' ) : __( 'The export could not be created. Try again.', 'eme-event-attendee-export' ) ); ?></p></div>
 	<?php endif; ?>
 
 	<?php if ( $emea_eme_active ) : ?>
-		<hr />
-		<h2><?php esc_html_e( 'Filter by event start date', 'eme-event-attendee-export' ); ?></h2>
-		<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
-			<input type="hidden" name="page" value="<?php echo esc_attr( EMEA_Export_Admin::PAGE_SLUG ); ?>" />
-			<table class="form-table" role="presentation">
-				<tbody>
-					<tr>
-						<th scope="row"><label for="emea-from"><?php esc_html_e( 'From', 'eme-event-attendee-export' ); ?></label></th>
-						<td>
-							<input type="date" id="emea-from" name="from" value="<?php echo esc_attr( $emea_from_raw ); ?>" />
-							<p class="description"><?php esc_html_e( 'Leave blank for no earliest start date.', 'eme-event-attendee-export' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="emea-to"><?php esc_html_e( 'To', 'eme-event-attendee-export' ); ?></label></th>
-						<td>
-							<input type="date" id="emea-to" name="to" value="<?php echo esc_attr( $emea_to_raw ); ?>" />
-							<p class="description"><?php esc_html_e( 'Leave blank for no latest start date.', 'eme-event-attendee-export' ); ?></p>
-						</td>
-					</tr>
-				</tbody>
-			</table>
-			<p class="submit">
-				<button type="submit" class="button"><?php esc_html_e( 'Filter events', 'eme-event-attendee-export' ); ?></button>
-				<?php if ( '' !== $emea_from_raw || '' !== $emea_to_raw ) : ?>
-					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . EMEA_Export_Admin::PAGE_SLUG ) ); ?>"><?php esc_html_e( 'Clear filter', 'eme-event-attendee-export' ); ?></a>
-				<?php endif; ?>
-			</p>
-		</form>
+		<div class="emea-filter-bar">
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="emea-filter-form">
+				<input type="hidden" name="page" value="<?php echo esc_attr( EMEA_Export_Admin::PAGE_SLUG ); ?>" />
+				<div class="emea-filter-title">
+					<span class="dashicons dashicons-filter" aria-hidden="true"></span>
+					<span><?php esc_html_e( 'Filter by event start date:', 'eme-event-attendee-export' ); ?></span>
+				</div>
+				<div class="emea-filter-group">
+					<label for="emea-from"><?php esc_html_e( 'From', 'eme-event-attendee-export' ); ?></label>
+					<input type="date" id="emea-from" name="from" value="<?php echo esc_attr( $emea_from_raw ); ?>" />
+				</div>
+				<div class="emea-filter-group">
+					<label for="emea-to"><?php esc_html_e( 'To', 'eme-event-attendee-export' ); ?></label>
+					<input type="date" id="emea-to" name="to" value="<?php echo esc_attr( $emea_to_raw ); ?>" />
+				</div>
+				<div class="emea-filter-actions">
+					<button type="submit" class="button button-primary"><?php esc_html_e( 'Filter', 'eme-event-attendee-export' ); ?></button>
+					<?php if ( '' !== $emea_from_raw || '' !== $emea_to_raw ) : ?>
+						<a class="button button-secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . EMEA_Export_Admin::PAGE_SLUG ) ); ?>"><?php esc_html_e( 'Clear filter', 'eme-event-attendee-export' ); ?></a>
+					<?php endif; ?>
+				</div>
+			</form>
+		</div>
 
 		<?php if ( $emea_summary ) : ?>
-			<hr />
 			<h2><?php esc_html_e( 'All events', 'eme-event-attendee-export' ); ?></h2>
 			<p>
 				<?php
@@ -118,6 +111,7 @@ $emea_reasons       = array(
 							<th><?php esc_html_e( 'Bookings', 'eme-event-attendee-export' ); ?></th>
 							<th class="emea-export-date"><?php esc_html_e( 'Event start', 'eme-event-attendee-export' ); ?></th>
 							<th><?php esc_html_e( 'Workbook', 'eme-event-attendee-export' ); ?></th>
+							<th class="emea-export-action"><?php esc_html_e( 'Action', 'eme-event-attendee-export' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -131,7 +125,7 @@ $emea_reasons       = array(
 							?>
 							<tr data-emea-export-page="<?php echo esc_attr( $emea_page ); ?>">
 								<th scope="row" class="check-column"><input type="checkbox" name="emea_event_ids[]" value="<?php echo esc_attr( $emea_event['id'] ); ?>" /></th>
-								<td><?php echo esc_html( $emea_event['name'] ); ?></td>
+								<td><strong><?php echo esc_html( $emea_event['name'] ); ?></strong></td>
 								<td><?php echo esc_html( number_format_i18n( $emea_event['count'] ) ); ?></td>
 								<td class="emea-export-date">
 									<?php if ( null === $emea_event['start'] ) : ?>
@@ -141,6 +135,12 @@ $emea_reasons       = array(
 									<?php endif; ?>
 								</td>
 								<td><code><?php echo esc_html( $emea_filename ); ?></code></td>
+								<td class="emea-export-action">
+									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=' . EMEA_Export_Admin::PAGE_SLUG . '&action=emea_export_single&event_id=' . $emea_event['id'] ), 'emea_export_single_' . $emea_event['id'] ) ); ?>" class="button button-small emea-export-single-btn" title="<?php esc_attr_e( 'Export this event as an Excel workbook (.xlsx)', 'eme-event-attendee-export' ); ?>">
+										<span class="dashicons dashicons-media-spreadsheet" aria-hidden="true"></span>
+										<?php esc_html_e( 'Export XLSX', 'eme-event-attendee-export' ); ?>
+									</a>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>

@@ -75,6 +75,11 @@ final class AttendeeExportTest extends TestCase {
 		$this->assertSame( 'Report.xlsx', EMEA_Exporter::xlsx_filename( 'Report.xlsx', 11, $used ) );
 		// A blank name falls back to event-{id}.
 		$this->assertSame( 'event-12.xlsx', EMEA_Exporter::xlsx_filename( '///', 12, $used ) );
+		// Problematic punctuation, colons and trailing dots are cleanly trimmed.
+		$this->assertSame(
+			'AI-Powered-Supply-Chains-Smarter-Operations-Stronger-Resilience.xlsx',
+			EMEA_Exporter::xlsx_filename( 'AI-Powered Supply Chains: Smarter Operations, Stronger Resilience..', 15, $used )
+		);
 	}
 
 	public function test_xlsx_filename_truncates_long_names() {
