@@ -1,0 +1,19 @@
+/**
+ * EME Event Attendee Export — admin page styles.
+ *
+ * v1.0.0 — The export list uses the full wp-admin content area, and the
+ * event start column does not wrap. The filter section has clear space
+ * below it, before the event list.
+ */
+
+.emea-wrap {
+	max-width: none;
+}
+
+.emea-export-date {
+	white-space: nowrap;
+}
+
+.emea-notice {
+	margin: 12px 0;
+}
